@@ -1,0 +1,532 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import 'leaflet/dist/leaflet.css';
+
+:root {
+  --primary-color: #0ea5e9;
+  --primary-hover: #0284c7;
+  --bg-gradient: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  --surface-color: rgba(255, 255, 255, 0.85);
+  --text-color: #334155;
+  --border-color: rgba(226, 232, 240, 0.8);
+  --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: var(--bg-gradient);
+  color: var(--text-color);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem;
+}
+
+#root {
+  width: 100%;
+  max-width: 800px;
+}
+
+.app-container {
+  background: var(--surface-color);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-color);
+  border-radius: 24px;
+  padding: 3rem;
+  box-shadow: var(--shadow-md);
+  transition: all 0.3s ease;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 2.5rem;
+}
+
+.header h1 {
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 0.5rem;
+  background: linear-gradient(to right, #0ea5e9, #3b82f6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.header p {
+  color: #64748b;
+  font-size: 1.1rem;
+}
+
+/* Stepper */
+.stepper {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 3rem;
+  position: relative;
+}
+
+.stepper::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: #e2e8f0;
+  transform: translateY(-50%);
+  z-index: 1;
+}
+
+.step-indicator {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #e2e8f0;
+  color: #64748b;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-weight: 600;
+  z-index: 2;
+  transition: all 0.3s ease;
+  border: 4px solid #f8fafc;
+}
+
+.step-indicator.active {
+  background: var(--primary-color);
+  color: white;
+  box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.2);
+}
+
+.step-indicator.completed {
+  background: #10b981;
+  color: white;
+}
+
+/* Form Styles */
+.form-section {
+  animation: fadeIn 0.4s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.form-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  color: #1e293b;
+  border-bottom: 2px solid #e2e8f0;
+  padding-bottom: 0.5rem;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group label {
+  font-weight: 500;
+  font-size: 0.95rem;
+  margin-bottom: 0.5rem;
+  color: #475569;
+}
+
+.form-group input {
+  padding: 0.8rem 1rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-family: inherit;
+  transition: all 0.2s ease;
+  background: white;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15);
+}
+
+.form-group.full-width {
+  grid-column: 1 / -1;
+}
+
+/* Button Container */
+.button-container {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 3rem;
+}
+
+.btn {
+  padding: 0.8rem 1.8rem;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-secondary {
+  background: white;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+
+.btn-secondary:hover {
+  background: #f1f5f9;
+}
+
+.btn-primary {
+  background: var(--primary-color);
+  color: white;
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+}
+
+.btn-primary:hover {
+  background: var(--primary-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(14, 165, 233, 0.4);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+.generate-status {
+  text-align: center;
+  margin-top: 1rem;
+  font-weight: 500;
+  color: #10b981;
+}
+
+.generate-status.error {
+  color: #ef4444;
+}
+
+/* Step labels under the circles */
+.step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  z-index: 2;
+}
+
+.step-label {
+  font-size: 0.78rem;
+  color: #94a3b8;
+  text-align: center;
+  max-width: 90px;
+  line-height: 1.2;
+}
+
+.step.active .step-label {
+  color: var(--primary-color);
+  font-weight: 600;
+}
+
+.step.completed .step-label {
+  color: #10b981;
+  font-weight: 600;
+}
+
+/* Sub headings inside a form section */
+.form-subheading {
+  grid-column: 1 / -1;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin-top: 1.5rem;
+  margin-bottom: 0.25rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px dashed #cbd5e1;
+}
+
+.form-subheading:first-child {
+  margin-top: 0;
+}
+
+/* Field pair (dropdown + percentage on one row) */
+.field-pair {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.field-pair > .form-group {
+  flex: 1 1 200px;
+}
+
+/* Select styling */
+.form-group select {
+  padding: 0.8rem 1rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-family: inherit;
+  transition: all 0.2s ease;
+  background: white;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  padding-right: 2.5rem;
+}
+
+.form-group select:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15);
+}
+
+/* Textarea styling */
+.form-group textarea {
+  padding: 0.8rem 1rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-family: inherit;
+  transition: all 0.2s ease;
+  background: white;
+  resize: vertical;
+  min-height: 60px;
+}
+
+.form-group textarea:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15);
+}
+
+/* Monthly grid (Jan-Des climate data) */
+.monthly-grid {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.monthly-grid .form-group label {
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+/* Table-like form (Adaptasi / Mitigasi / KEL-MASYARAKAT) */
+.table-form {
+  grid-column: 1 / -1;
+  overflow-x: auto;
+  margin-top: 0.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+.table-form table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  min-width: 900px;
+}
+
+.table-form th,
+.table-form td {
+  padding: 0.6rem 0.5rem;
+  text-align: left;
+  border-bottom: 1px solid #e2e8f0;
+  border-right: 1px solid #e2e8f0;
+  vertical-align: top;
+}
+
+.table-form th {
+  background: #f1f5f9;
+  font-weight: 600;
+  color: #334155;
+  font-size: 0.82rem;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.table-form td.no,
+.table-form td.label {
+  background: #f8fafc;
+  font-weight: 500;
+  color: #475569;
+}
+
+.table-form td.label small {
+  display: block;
+  font-weight: 400;
+  color: #94a3b8;
+  font-size: 0.78rem;
+  margin-top: 0.2rem;
+}
+
+.table-form input[type="text"],
+.table-form input[type="number"],
+.table-form select,
+.table-form textarea {
+  width: 100%;
+  padding: 0.45rem 0.5rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-family: inherit;
+  background: white;
+  box-sizing: border-box;
+}
+
+.table-form input:focus,
+.table-form select:focus,
+.table-form textarea:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.15);
+}
+
+.table-form textarea {
+  min-height: 40px;
+  resize: vertical;
+}
+
+.table-form .col-narrow { width: 50px; }
+.table-form .col-medium { width: 140px; }
+.table-form .col-wide { width: 220px; }
+
+/* Section divider row inside tables */
+.table-form tr.section-row td {
+  background: #e0f2fe;
+  font-weight: 700;
+  color: #0c4a6e;
+  font-size: 0.9rem;
+}
+
+/* Make the container scrollable for wide tables on small screens */
+.app-container {
+  max-height: none;
+}
+
+/* Review step JSON preview */
+.json-preview {
+  grid-column: 1 / -1;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1rem;
+  font-family: 'SF Mono', Monaco, monospace;
+  font-size: 0.8rem;
+  color: #475569;
+  max-height: 300px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Current step label below the stepper */
+.current-step-label {
+  text-align: center;
+  margin-top: 1rem;
+  margin-bottom: 2rem;
+  font-size: 0.95rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+/* Generic full-width utility (for non-form-group wrappers like monthly-grid) */
+.full-width {
+  grid-column: 1 / -1;
+}
+
+/* Monthly climate sub-section */
+.monthly-grid .monthly-title {
+  grid-column: 1 / -1;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #475569;
+  margin-top: 0.5rem;
+  margin-bottom: 0;
+}
+
+.monthly-fields {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.75rem;
+}
+
+.monthly-fields .form-group label {
+  font-size: 0.82rem;
+}
+
+/* Hint text inside forms */
+.form-hint {
+  grid-column: 1 / -1;
+  font-size: 0.88rem;
+  color: #64748b;
+  background: #f1f5f9;
+  border-left: 3px solid var(--primary-color);
+  padding: 0.6rem 0.9rem;
+  border-radius: 6px;
+  margin-bottom: 0.5rem;
+}
+
+/* Flex grow utility (keterangan field in a field-pair) */
+.flex-grow {
+  flex: 2 1 250px;
+}
+
+/* Responsive tweaks */
+@media (max-width: 640px) {
+  .app-container {
+    padding: 1.5rem;
+  }
+
+  .stepper {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .stepper::before {
+    display: none;
+  }
+
+  .step-label {
+    font-size: 0.7rem;
+    max-width: 70px;
+  }
+
+  .header h1 {
+    font-size: 1.6rem;
+  }
+
+  .monthly-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .field-pair {
+    flex-direction: column;
+  }
+}
