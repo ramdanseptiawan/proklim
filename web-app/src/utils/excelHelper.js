@@ -205,6 +205,12 @@ export const generateExcel = async (formData) => {
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(arrayBuffer);
 
+    // Clear conditional formatting from all worksheets to avoid ExcelJS bug
+    // where renderExpression crashes on rules with missing formula data
+    workbook.worksheets.forEach(ws => {
+      ws.conditionalFormattings = [];
+    });
+
     // Flat-mapped sheets
     populateSheet(workbook.getWorksheet('ID-PENGISI'), fieldMappings['ID-PENGISI'], formData.pengisi);
     populateSheet(workbook.getWorksheet('ID-LOKASI'), fieldMappings['ID-LOKASI'], formData.lokasi);
