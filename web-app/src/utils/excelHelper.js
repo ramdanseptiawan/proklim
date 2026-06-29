@@ -195,7 +195,11 @@ const populateTableSheet = (sheet, columns, sectionRows, sectionsData) => {
 
 export const generateExcel = async (formData) => {
   try {
-    const response = await fetch('/template.xlsx');
+    // Cache-busting to avoid Vercel CDN returning 304 (Not Modified) with empty body
+    const response = await fetch(`/template.xlsx?t=${Date.now()}`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch template: ${response.status} ${response.statusText}`);
+    }
     const arrayBuffer = await response.arrayBuffer();
 
     const workbook = new ExcelJS.Workbook();
