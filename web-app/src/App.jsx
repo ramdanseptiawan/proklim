@@ -205,6 +205,7 @@ function App() {
   });
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [generateError, setGenerateError] = useState('');
   const [isFetchingWeather, setIsFetchingWeather] = useState(false);
 
   const [formData, setFormData] = useState(() => {
@@ -449,17 +450,30 @@ function App() {
   const prevStep = () => setStep(prev => prev - 1);
 
   const handleGenerate = async () => {
+    setGenerateError('');
     const incomplete = getAllIncompleteSteps();
     if (incomplete.length > 0) {
-      const msg = `⚠️ Data belum lengkap:\n\n${incomplete.join('\n')}\n\nTetap generate dan download Excel?`;
-      if (!window.confirm(msg)) return;
+      const lines = ['⚠️ Data belum lengkap:', '', ...incomplete, '', 'Tetap generate dan download Excel?'];
+      if (!window.confirm(lines.join(String.fromCharCode(10)))) return;
     }
     setIsGenerating(true);
     setIsSuccess(false);
-    const success = await generateExcel(formData);
-    setIsGenerating(false);
-    if (success) { setIsSuccess(true); setTimeout(() => setIsSuccess(false), 5000); }
+    try {
+      const success = await generateExcel(formData);
+      setIsGenerating(false);
+      if (success) {
+        setIsSuccess(true);
+        setTimeout(() => setIsSuccess(false), 5000);
+      } else {
+        setGenerateError('Gagal generate Excel. Cek Console (F12) untuk detail.');
+      }
+    } catch (err) {
+      setIsGenerating(false);
+      console.error(err);
+      setGenerateError('Error: ' + (err.message || 'Gagal generate Excel.'));
+    }
   };
+
 
   return (
     <div className="app-container">
@@ -737,6 +751,9 @@ function App() {
 
       {isSuccess && (
         <div className="generate-status">Berhasil! File Excel telah diunduh dengan rumus yang utuh.</div>
+      )}
+      {generateError && (
+        <div style={{ marginTop: '1rem', background: '#fee2e2', border: '1px solid #fecaca', borderRadius: '10px', padding: '0.6rem 1rem', color: '#991b1b', fontSize: '0.9rem' }}>{generateError}</div>
       )}
     </div>
   );
