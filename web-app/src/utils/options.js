@@ -71,3 +71,7 @@ export const BULAN = [
 
 // Helper to make a placeholder option list with empty first choice
 export const withEmpty = (options) => ['', ...options];
+
+// Kota Bandung data
+export const KOTA_BANDUNG = 'Kota Bandung';
+export { KECAMATAN_OPTIONS, getKelurahanByKecamatan } from '../data/bandung';

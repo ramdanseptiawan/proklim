@@ -18,7 +18,8 @@ import {
   PROVINSI_OPTIONS, TOPOGRAFI_OPTIONS, TIPOLOGI_OPTIONS, CIRI_KHAS_OPTIONS,
   PENGGUNAAN_LAHAN_OPTIONS, SUMBER_PENGHASILAN_OPTIONS, SUMBER_DATA_OPTIONS,
   TINGKAT_KEJADIAN_OPTIONS, TINGKAT_KERENTANAN_OPTIONS, FUNGSI_SUMBER_AIR_OPTIONS,
-  DATA_PIHAN_OPTIONS, KONDISI_OPTIONS, BULAN
+  DATA_PIHAN_OPTIONS, KONDISI_OPTIONS, BULAN,
+  KOTA_BANDUNG, KECAMATAN_OPTIONS, getKelurahanByKecamatan
 } from './utils/options';
 
 // ---- Constants ----
@@ -210,8 +211,8 @@ function App() {
     const saved = localStorage.getItem('proklim_form');
     if (saved) return JSON.parse(saved);
     return {
-      pengisi: { namaLengkap:'', jabatan:'', jalan:'', desaKel:'', kecamatan:'', kotaKab:'', provinsi:'', noTelp:'', email:'' },
-      lokasi: { dusun:'', desa:'', kecamatan:'', kotaKab:'', provinsi:'', website:'', emailLokasi:'', naraNama:'', naraAlamat:'', naraTelp:'', naraEmail:'', naraInstitusi:'', naraJabatan:'', latitude: '', longitude: '' },
+      pengisi: { namaLengkap:'', jabatan:'', jalan:'', desaKel:'', kecamatan:'', kotaKab:'Kota Bandung', provinsi:'JAWA BARAT', noTelp:'', email:'' },
+      lokasi: { dusun:'', desa:'', kecamatan:'', kotaKab:'Kota Bandung', provinsi:'JAWA BARAT', website:'', emailLokasi:'', naraNama:'', naraAlamat:'', naraTelp:'', naraEmail:'', naraInstitusi:'', naraJabatan:'', latitude: '', longitude: '' },
       dataDasar: buildDataDasarState(),
       informasiPI: buildInformasiPIState(),
       adaptasi: { sections: buildSections(ADAPTASI_SECTIONS_META, emptyAdaptasiRow) },
@@ -379,6 +380,41 @@ function App() {
   const handleDataDasarChange = handleChange('dataDasar');
   const handleInformasiPIChange = handleChange('informasiPI');
 
+  // Bandung cascading dropdown: when kecamatan changes, reset kelurahan
+  const handleKecamatanChange = (formKey, kelField) => (e) => {
+    const { value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [formKey]: { ...prev[formKey], kecamatan: value, [kelField]: '' }
+    }));
+  };
+
+  // ---- Completeness checker ----
+  const FIELD_LABELS = {
+    pengisi: { namaLengkap:'Nama Lengkap', jabatan:'Jabatan', jalan:'Jalan', kecamatan:'Kecamatan', desaKel:'Desa/Kelurahan', noTelp:'No Telepon' },
+    lokasi: { dusun:'Dusun/RW', kecamatan:'Kecamatan', desa:'Desa/Kelurahan', website:'Website', emailLokasi:'E-mail Lokasi', naraNama:'Nama Narahubung', naraAlamat:'Alamat Narahubung', naraTelp:'Telp Narahubung', naraInstitusi:'Institusi Narahubung', naraJabatan:'Jabatan Narahubung' },
+    dataDasar: { luasLokasi:'Luas Lokasi', jumlahKK:'Jumlah KK', jumlahPenduduk:'Jumlah Penduduk', elevasi:'Elevasi', topografi:'Topografi', tipologi:'Tipologi', ciriKhas:'Ciri Khas' }
+  };
+
+  const getIncompleteFields = (formKey) => {
+    const data = formData[formKey];
+    const labels = FIELD_LABELS[formKey] || {};
+    return Object.entries(labels)
+      .filter(([key]) => !data[key] || data[key] === '')
+      .map(([, label]) => label);
+  };
+
+  const getAllIncompleteSteps = () => {
+    const steps = [];
+    const pengisiIncomplete = getIncompleteFields('pengisi');
+    const lokasiIncomplete = getIncompleteFields('lokasi');
+    const dasarIncomplete = getIncompleteFields('dataDasar');
+    if (pengisiIncomplete.length) steps.push(`Pengisi: ${pengisiIncomplete.join(', ')}`);
+    if (lokasiIncomplete.length) steps.push(`Lokasi: ${lokasiIncomplete.join(', ')}`);
+    if (dasarIncomplete.length) steps.push(`Data Dasar: ${dasarIncomplete.join(', ')}`);
+    return steps;
+  };
+
   // Table-form change handler
   const handleTableChange = (formName, sectionKey, rowIndex, field, value) => {
     setFormData(prev => ({
@@ -401,6 +437,11 @@ function App() {
   const prevStep = () => setStep(prev => prev - 1);
 
   const handleGenerate = async () => {
+    const incomplete = getAllIncompleteSteps();
+    if (incomplete.length > 0) {
+      const msg = `⚠️ Data belum lengkap:\n\n${incomplete.join('\n')}\n\nTetap generate dan download Excel?`;
+      if (!window.confirm(msg)) return;
+    }
     setIsGenerating(true);
     setIsSuccess(false);
     const success = await generateExcel(formData);
@@ -434,6 +475,18 @@ function App() {
       </div>
       <div className="current-step-label">Langkah {step} dari {STEPS.length}: {STEPS[step - 1]}</div>
 
+      {/* Incomplete warning banner */}
+      {[1,2,3].includes(step) && (() => {
+        const formKey = step === 1 ? 'pengisi' : step === 2 ? 'lokasi' : 'dataDasar';
+        const missing = getIncompleteFields(formKey);
+        return missing.length > 0 ? (
+          <div style={{ background: '#fff3cd', border: '1px solid #ffc107', borderRadius: '10px', padding: '0.6rem 1rem', marginBottom: '1rem', fontSize: '0.88rem', color: '#856404', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+            <span style={{ fontSize: '1.1rem' }}>⚠️</span>
+            <span><strong>Data belum lengkap:</strong> {missing.join(', ')}. Anda tetap bisa melanjutkan.</span>
+          </div>
+        ) : null;
+      })()}
+
       {/* STEP 1: ID-PENGISI */}
       {step === 1 && (
         <div className="form-section">
@@ -442,10 +495,10 @@ function App() {
             <div className="form-group full-width"><label>Nama Lengkap</label><input type="text" name="namaLengkap" value={formData.pengisi.namaLengkap} onChange={handlePengisiChange} placeholder="John Doe" /></div>
             <div className="form-group full-width"><label>Jabatan</label><input type="text" name="jabatan" value={formData.pengisi.jabatan} onChange={handlePengisiChange} placeholder="Ketua Kelompok" /></div>
             <div className="form-group full-width"><label>Jalan, Nomor, RT / RW</label><input type="text" name="jalan" value={formData.pengisi.jalan} onChange={handlePengisiChange} placeholder="Jl. Merdeka No.1 RT 01 / RW 02" /></div>
-            <div className="form-group"><label>Desa / Kelurahan</label><input type="text" name="desaKel" value={formData.pengisi.desaKel} onChange={handlePengisiChange} /></div>
-            <div className="form-group"><label>Kecamatan</label><input type="text" name="kecamatan" value={formData.pengisi.kecamatan} onChange={handlePengisiChange} /></div>
-            <div className="form-group"><label>Kota / Kabupaten</label><input type="text" name="kotaKab" value={formData.pengisi.kotaKab} onChange={handlePengisiChange} /></div>
-            <SelectField label="Provinsi" name="provinsi" value={formData.pengisi.provinsi} onChange={handlePengisiChange} options={PROVINSI_OPTIONS} />
+            <div className="form-group"><label>Provinsi</label><input type="text" readOnly value={formData.pengisi.provinsi} style={{ backgroundColor: '#f0f9ff', fontWeight: '500', color: '#0c4a6e' }} /></div>
+            <div className="form-group"><label>Kota / Kabupaten</label><input type="text" readOnly value={formData.pengisi.kotaKab} style={{ backgroundColor: '#f0f9ff', fontWeight: '500', color: '#0c4a6e' }} /></div>
+            <SelectField label="Kecamatan" name="kecamatan" value={formData.pengisi.kecamatan} onChange={handleKecamatanChange('pengisi', 'desaKel')} options={KECAMATAN_OPTIONS} />
+            <SelectField label="Desa / Kelurahan" name="desaKel" value={formData.pengisi.desaKel} onChange={handlePengisiChange} options={getKelurahanByKecamatan(formData.pengisi.kecamatan)} placeholder={formData.pengisi.kecamatan ? '-- Pilih Kelurahan --' : '-- Pilih Kecamatan dulu --'} />
             <div className="form-group"><label>No Telepon / HP</label><input type="tel" name="noTelp" value={formData.pengisi.noTelp} onChange={handlePengisiChange} placeholder="081234567890" /></div>
             <div className="form-group"><label>E-mail</label><input type="email" name="email" value={formData.pengisi.email} onChange={handlePengisiChange} placeholder="john@example.com" /></div>
           </div>
@@ -458,10 +511,10 @@ function App() {
           <h2 className="form-title">Identitas Lokasi</h2>
           <div className="form-grid">
             <div className="form-group"><label>Dusun/RW</label><input type="text" name="dusun" value={formData.lokasi.dusun} onChange={handleLokasiChange} /></div>
-            <div className="form-group"><label>Desa/Kelurahan</label><input type="text" name="desa" value={formData.lokasi.desa} onChange={handleLokasiChange} /></div>
-            <div className="form-group"><label>Kecamatan</label><input type="text" name="kecamatan" value={formData.lokasi.kecamatan} onChange={handleLokasiChange} /></div>
-            <div className="form-group"><label>Kota/Kabupaten</label><input type="text" name="kotaKab" value={formData.lokasi.kotaKab} onChange={handleLokasiChange} /></div>
-            <SelectField label="Provinsi" name="provinsi" value={formData.lokasi.provinsi} onChange={handleLokasiChange} options={PROVINSI_OPTIONS} />
+            <div className="form-group"><label>Provinsi</label><input type="text" readOnly value={formData.lokasi.provinsi} style={{ backgroundColor: '#f0f9ff', fontWeight: '500', color: '#0c4a6e' }} /></div>
+            <div className="form-group"><label>Kota/Kabupaten</label><input type="text" readOnly value={formData.lokasi.kotaKab} style={{ backgroundColor: '#f0f9ff', fontWeight: '500', color: '#0c4a6e' }} /></div>
+            <SelectField label="Kecamatan" name="kecamatan" value={formData.lokasi.kecamatan} onChange={handleKecamatanChange('lokasi', 'desa')} options={KECAMATAN_OPTIONS} />
+            <SelectField label="Desa/Kelurahan" name="desa" value={formData.lokasi.desa} onChange={handleLokasiChange} options={getKelurahanByKecamatan(formData.lokasi.kecamatan)} placeholder={formData.lokasi.kecamatan ? '-- Pilih Kelurahan --' : '-- Pilih Kecamatan dulu --'} />
             <div className="form-group full-width">
               <label>Titik Koordinat Lokasi (Klik di peta untuk menentukan Latitude & Longitude)</label>
               <div style={{ height: '300px', width: '100%', marginBottom: '0.5rem', borderRadius: '12px', overflow: 'hidden', border: '1px solid #cbd5e1' }}>

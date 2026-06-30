@@ -1,6 +1,35 @@
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 
+// ---- Helper: convert string to number if it looks numeric ----
+const toNumber = (val) => {
+  if (val === undefined || val === null || val === '') return undefined;
+  const num = Number(val);
+  return isNaN(num) ? val : num;
+};
+
+// ---- Numeric field keys (flat sheets) that must be written as numbers ----
+const NUMERIC_FIELDS_DATA_DASAR = new Set([
+  'luasLokasi', 'jumlahKK', 'jumlahPenduduk', 'elevasi',
+  'lahanAPersen', 'lahanBPersen', 'lahanCPersen',
+  'penghasilanAPersen', 'penghasilanBPersen', 'penghasilanCPersen',
+  'curahHujanTahunan',
+  'curahJan', 'curahFeb', 'curahMar', 'curahApr', 'curahMei', 'curahJun',
+  'curahJul', 'curahAgu', 'curahSep', 'curahOkt', 'curahNov', 'curahDes',
+  'suhuTahunan',
+  'suhuJan', 'suhuFeb', 'suhuMar', 'suhuApr', 'suhuMei', 'suhuJun',
+  'suhuJul', 'suhuAgu', 'suhuSep', 'suhuOkt', 'suhuNov', 'suhuDes',
+]);
+
+const NUMERIC_FIELDS_INFORMASI_PI = new Set([
+  'nilaiIKA', 'nilaiIKS',
+]);
+
+// Table numeric columns for ADAPTASI / MITIGASI
+const NUMERIC_TABLE_FIELDS = new Set([
+  'jumlah', 'penerimaKK', 'terdampakKK',
+]);
+
 // Field mapping configuration: { sheetName: { stateKey: 'CELL' } }
 const fieldMappings = {
   'ID-PENGISI': {
@@ -161,11 +190,17 @@ const KEL_SECTION_ROWS = {
 };
 
 // Generic sheet populator for flat key->cell mappings
-const populateSheet = (sheet, mapping, data) => {
+// numericFields: optional Set of field keys to convert to number before writing
+const populateSheet = (sheet, mapping, data, numericFields = null) => {
   if (!sheet || !data) return;
   Object.keys(mapping).forEach(key => {
-    const val = data[key];
-    if (val !== undefined && val !== null && val !== '') {
+    const rawVal = data[key];
+    if (rawVal === undefined || rawVal === null || rawVal === '') return;
+    // Convert to number if this field expects numeric values
+    const val = numericFields?.has(key) ? toNumber(rawVal) : rawVal;
+    // Only write if we got a valid value back (toNumber returns undefined for empty)
+    if (val !== undefined) {
+      // Preserve cell style: only set value, never touch style properties
       sheet.getCell(mapping[key]).value = val;
     }
   });
@@ -173,24 +208,61 @@ const populateSheet = (sheet, mapping, data) => {
 
 // Table populator: walks formData[sectionKey].rows array and writes each row's
 // fields into the corresponding template row at the mapped column.
+// Includes auto-numbering of the "No" column and numeric field conversion.
 const populateTableSheet = (sheet, columns, sectionRows, sectionsData) => {
   if (!sheet || !sectionsData) return;
+  // Keep a running counter across all sections for auto-numbering
+  let globalRowNum = 0;
   Object.keys(sectionsData).forEach(secKey => {
     const rows = sectionsData[secKey]?.rows || [];
     const targetRows = sectionRows[secKey] || [];
     rows.forEach((rowData, idx) => {
       const rowNum = targetRows[idx];
       if (!rowNum) return;
+
+      // Auto-number: write sequential number to "No" column (col 10 = J)
+      globalRowNum++;
+      if (columns.no !== undefined) {
+        sheet.getRow(rowNum).getCell(columns.no).value = globalRowNum;
+      }
+
+      // Write data fields
       Object.keys(rowData).forEach(field => {
-        const val = rowData[field];
+        const rawVal = rowData[field];
         const col = columns[field];
-        if (col !== undefined && val !== undefined && val !== null && val !== '') {
-          // ExcelJS: use getRow(rowNum).getCell(colNumber) for row/col access
-          sheet.getRow(rowNum).getCell(col).value = val;
+        if (col !== undefined && rawVal !== undefined && rawVal !== null && rawVal !== '') {
+          // Convert numeric fields to actual numbers to preserve number formatting
+          const val = NUMERIC_TABLE_FIELDS.has(field) ? toNumber(rawVal) : rawVal;
+          if (val !== undefined) {
+            // Preserve cell style: only set value
+            sheet.getRow(rowNum).getCell(col).value = val;
+          }
         }
       });
     });
   });
+};
+
+// Helper: attempt to write buffer, falling back to clearing conditional formattings
+// if ExcelJS renderExpression bug is hit.
+const safeWriteBuffer = async (workbook) => {
+  try {
+    return await workbook.xlsx.writeBuffer();
+  } catch (e) {
+    // ExcelJS ≤4.4.0 can crash on renderExpression for certain conditional-formatting
+    // rules with missing formula data. Fall back: clear all CF and retry once.
+    if (
+      e.message &&
+      (e.message.includes('renderExpression') || e.message.includes('formula'))
+    ) {
+      console.warn('Conditional formatting render error, retrying without CF...');
+      workbook.worksheets.forEach(ws => {
+        ws.conditionalFormattings = [];
+      });
+      return await workbook.xlsx.writeBuffer();
+    }
+    throw e;
+  }
 };
 
 export const generateExcel = async (formData) => {
@@ -205,19 +277,13 @@ export const generateExcel = async (formData) => {
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(arrayBuffer);
 
-    // Clear conditional formatting from all worksheets to avoid ExcelJS bug
-    // where renderExpression crashes on rules with missing formula data
-    workbook.worksheets.forEach(ws => {
-      ws.conditionalFormattings = [];
-    });
-
-    // Flat-mapped sheets
+    // Flat-mapped sheets (pass numeric field sets for proper type conversion)
     populateSheet(workbook.getWorksheet('ID-PENGISI'), fieldMappings['ID-PENGISI'], formData.pengisi);
     populateSheet(workbook.getWorksheet('ID-LOKASI'), fieldMappings['ID-LOKASI'], formData.lokasi);
-    populateSheet(workbook.getWorksheet('DATA DASAR'), fieldMappings['DATA DASAR'], formData.dataDasar);
-    populateSheet(workbook.getWorksheet('INFORMASI TERKAIT PI'), fieldMappings['INFORMASI TERKAIT PI'], formData.informasiPI);
+    populateSheet(workbook.getWorksheet('DATA DASAR'), fieldMappings['DATA DASAR'], formData.dataDasar, NUMERIC_FIELDS_DATA_DASAR);
+    populateSheet(workbook.getWorksheet('INFORMASI TERKAIT PI'), fieldMappings['INFORMASI TERKAIT PI'], formData.informasiPI, NUMERIC_FIELDS_INFORMASI_PI);
 
-    // Table-mapped sheets
+    // Table-mapped sheets (auto-numbering + numeric conversion built in)
     if (formData.adaptasi?.sections) {
       populateTableSheet(
         workbook.getWorksheet('ADAPTASI PI'),
@@ -243,7 +309,8 @@ export const generateExcel = async (formData) => {
       );
     }
 
-    const buffer = await workbook.xlsx.writeBuffer();
+    // Write buffer — preserves conditional formatting unless ExcelJS bug forces fallback
+    const buffer = await safeWriteBuffer(workbook);
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     saveAs(blob, 'ProKlim_Filled.xlsx');
 
