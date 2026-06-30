@@ -393,7 +393,8 @@ function App() {
   const FIELD_LABELS = {
     pengisi: { namaLengkap:'Nama Lengkap', jabatan:'Jabatan', jalan:'Jalan', kecamatan:'Kecamatan', desaKel:'Desa/Kelurahan', noTelp:'No Telepon' },
     lokasi: { dusun:'Dusun/RW', kecamatan:'Kecamatan', desa:'Desa/Kelurahan', website:'Website', emailLokasi:'E-mail Lokasi', naraNama:'Nama Narahubung', naraAlamat:'Alamat Narahubung', naraTelp:'Telp Narahubung', naraInstitusi:'Institusi Narahubung', naraJabatan:'Jabatan Narahubung' },
-    dataDasar: { luasLokasi:'Luas Lokasi', jumlahKK:'Jumlah KK', jumlahPenduduk:'Jumlah Penduduk', elevasi:'Elevasi', topografi:'Topografi', tipologi:'Tipologi', ciriKhas:'Ciri Khas' }
+    dataDasar: { luasLokasi:'Luas Lokasi', jumlahKK:'Jumlah KK', jumlahPenduduk:'Jumlah Penduduk', elevasi:'Elevasi', topografi:'Topografi', tipologi:'Tipologi', ciriKhas:'Ciri Khas' },
+    informasiPI: { tingkatKerentanan:'Tingkat Kerentanan', nilaiIKA:'Nilai IKA', nilaiIKS:'Nilai IKS' }
   };
 
   const getIncompleteFields = (formKey) => {
@@ -409,10 +410,21 @@ function App() {
     const pengisiIncomplete = getIncompleteFields('pengisi');
     const lokasiIncomplete = getIncompleteFields('lokasi');
     const dasarIncomplete = getIncompleteFields('dataDasar');
+    const infoPIIncomplete = getIncompleteFields('informasiPI');
     if (pengisiIncomplete.length) steps.push(`Pengisi: ${pengisiIncomplete.join(', ')}`);
     if (lokasiIncomplete.length) steps.push(`Lokasi: ${lokasiIncomplete.join(', ')}`);
     if (dasarIncomplete.length) steps.push(`Data Dasar: ${dasarIncomplete.join(', ')}`);
+    if (infoPIIncomplete.length) steps.push(`Informasi PI: ${infoPIIncomplete.join(', ')}`);
     return steps;
+  };
+
+  const isStepComplete = (n) => {
+    if (n === 1) return getIncompleteFields('pengisi').length === 0;
+    if (n === 2) return getIncompleteFields('lokasi').length === 0;
+    if (n === 3) return getIncompleteFields('dataDasar').length === 0;
+    if (n === 4) return getIncompleteFields('informasiPI').length === 0;
+    // Steps 5-7 are table-based, always considered complete when passed
+    return true;
   };
 
   // Table-form change handler
@@ -462,11 +474,18 @@ function App() {
       <div className="stepper">
         {STEPS.map((label, i) => {
           const n = i + 1;
-          const state = step === n ? 'active' : step > n ? 'completed' : '';
+          let state;
+          if (step === n) {
+            state = 'active';
+          } else if (step > n) {
+            state = isStepComplete(n) ? 'completed' : 'warning';
+          } else {
+            state = '';
+          }
           return (
             <div className={`step ${state}`} key={n}>
               <div className={`step-indicator ${state}`}>
-                {step > n ? '✓' : n}
+                {step > n ? (isStepComplete(n) ? '✓' : '⚠') : n}
               </div>
               <span className="step-label">{label}</span>
             </div>
@@ -476,8 +495,8 @@ function App() {
       <div className="current-step-label">Langkah {step} dari {STEPS.length}: {STEPS[step - 1]}</div>
 
       {/* Incomplete warning banner */}
-      {[1,2,3].includes(step) && (() => {
-        const formKey = step === 1 ? 'pengisi' : step === 2 ? 'lokasi' : 'dataDasar';
+      {[1,2,3,4].includes(step) && (() => {
+        const formKey = step === 1 ? 'pengisi' : step === 2 ? 'lokasi' : step === 3 ? 'dataDasar' : 'informasiPI';
         const missing = getIncompleteFields(formKey);
         return missing.length > 0 ? (
           <div style={{ background: '#fff3cd', border: '1px solid #ffc107', borderRadius: '10px', padding: '0.6rem 1rem', marginBottom: '1rem', fontSize: '0.88rem', color: '#856404', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
